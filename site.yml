@@ -7,16 +7,44 @@
   - name: install updates Rocky and CentOS
     tags: always
     dnf:
-      update_only: yes
       update_cache: yes
+    changed_when: false
     when: ansible_distribution in ["Rocky", "CentOS"]
 
   - name: install updates Ubuntu and Debian
     tags: always
     apt:
-      upgrade: dist
       update_cache: yes
+    changed_when: false
     when: ansible_distribution in ["Ubuntu", "Debian"]
+
+- hosts: all
+  become: true
+  tasks:
+
+  - name: add ssh key for max
+    tags: always
+    authorized_key:
+      user: max
+      key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMXRY2K7VByi3mrFjZku/qSN1bPIKqSJVf4jjDrRxCxl ansible"
+
+- hosts: workstations
+  become: true
+  tasks:
+
+  - name: install unzip
+    package:
+      name: unzip
+
+#  - name: install terraform
+#    unarchive:
+#      src: https://releases.hashicorp.com/terraform/0.12.28/terraform_0.12.28_linux_amd64.zip
+#      dest: /usr/local/bin
+#      remote_src: yes
+#      mode: 0755
+#      owner: root
+#      group: root
+
 
 - hosts: web_servers
   become: true
@@ -39,6 +67,31 @@
         - php
       state: latest
     when: ansible_distribution in ["Rocky", "CentOS"]
+
+  - name: start httpd (CentOS)
+    tags: apache,centos,httpd
+    service:
+      name: httpd
+      state: started
+      enabled: yes
+    when: ansible_distribution in ["Rocky", "CentOS"]
+
+  - name: change e-mail address for admin
+    tags: apache,centos,httpd
+    lineinfile:
+      path: /etc/httpd/conf/httpd.conf
+      regexp: '^ServerAdmin'
+      line: ServerAdmin somebody@somewhere.net
+    when: ansible_distribution in ["Rocky", "CentOS"]
+    register: httpd
+
+  - name: restart httpd (Rocky and CentOS)
+    tags: apache,centos,httpd
+    service:
+      name: httpd
+      state: restarted
+    when: httpd.changed
+
 
   - name: copy default html file for site
     tags: apache,apache2,httpd

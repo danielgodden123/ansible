@@ -1,0 +1,44 @@
+---
+
+- hosts: all
+  become: true
+  pre_tasks:
+
+  - name: install updates Rocky and CentOS
+    tags: always
+    dnf:
+      update_only: yes
+      update_cache: yes
+    when: ansible_distribution in ["Rocky", "CentOS"]
+
+  - name: install updates Ubuntu and Debian
+    tags: always
+    apt:
+      upgrade: dist
+      update_cache: yes
+    when: ansible_distribution in ["Ubuntu", "Debian"]
+
+- hosts: all
+  become: true
+  tasks:
+
+  - name: create max user
+    tags: always
+    user:
+      name: max
+      groups: root
+
+  - name: add ssh key for max
+    tags: always
+    authorized_key:
+      user: max
+      key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMXRY2K7VByi3mrFjZku/qSN1bPIKqSJVf4jjDrRxCxl ansible"
+
+  - name: add sudoers file for max
+    tags: always
+    copy:
+      src: sudoer_max
+      dest: /etc/sudoers.d/max
+      owner: root
+      group: root
+      mode: 0440
